@@ -72,21 +72,21 @@ impl BondingCurveState {
     }
 
     pub fn vsol_reserve_amount(&self) -> u64 {
-        unsafe { core::ptr::read_unaligned(self.0.add(9) as *const u64) }
+        unsafe { core::ptr::read_unaligned(self.0.add(41) as *const u64) }
     }
 
     pub fn vsol_mint(&self) -> [u8; 32] {
         let mut mint = [0u8; 32];
-        mint.copy_from_slice(unsafe { core::slice::from_raw_parts(self.0.add(41), 32) });
+        mint.copy_from_slice(unsafe { core::slice::from_raw_parts(self.0.add(49), 32) });
         mint
     }
 
     pub fn total_supply(&self) -> u64 {
-        unsafe { core::ptr::read_unaligned(self.0.add(17) as *const u64) }
+        unsafe { core::ptr::read_unaligned(self.0.add(81) as *const u64) }
     }
     
     pub fn allocation_at_migration(&self) -> u64 {
-        unsafe { core::ptr::read_unaligned(self.0.add(25) as *const u64) }
+        unsafe { core::ptr::read_unaligned(self.0.add(89) as *const u64) }
     }
 
 }
@@ -232,8 +232,8 @@ pub fn buy(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     if state_account.data_len() != 0 {
         unsafe {
             let data_ptr = state_account.borrow_mut_data_unchecked().as_mut_ptr();
-            *(data_ptr.add(32) as *mut [u8; 8]) = (bonding_curve_state.vtoken_reserve_amount() + amount).to_le_bytes();
-            *(data_ptr.add(40) as *mut [u8; 8]) = (bonding_curve_state.vsol_reserve_amount() + total_sol_cost).to_le_bytes();
+            *(data_ptr.add(1) as *mut [u8; 8]) = (bonding_curve_state.vtoken_reserve_amount() + amount).to_le_bytes();
+            *(data_ptr.add(41) as *mut [u8; 8]) = (bonding_curve_state.vsol_reserve_amount() - refund).to_le_bytes();
         }
     } else {
         return Err(ProgramError::UninitializedAccount);
@@ -330,9 +330,8 @@ pub fn sell(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
             // Get a mutable pointer to the account's data once
             let data_ptr = state_account.borrow_mut_data_unchecked().as_mut_ptr();
     
-            // Calculate the new amount and store it in the correct position (32-byte offset)
-            *(data_ptr.add(32) as *mut [u8; 8]) = (BondingCurveState::from_account_info(state_account).vtoken_reserve_amount() - amount).to_le_bytes();
-            *(data_ptr.add(40) as *mut [u8; 8]) = (BondingCurveState::from_account_info(state_account).vsol_reserve_amount() - refund).to_le_bytes();
+            *(data_ptr.add(1) as *mut [u8; 8]) = (bonding_curve_state.vtoken_reserve_amount() - amount).to_le_bytes();
+            *(data_ptr.add(41) as *mut [u8; 8]) = (bonding_curve_state.vsol_reserve_amount() + total_sol_cost).to_le_bytes();
         }
     } else {
         return Err(ProgramError::UninitializedAccount);
